@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Päiväkirja — Linxdiary</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .anchor-link { margin-left: 8px; opacity: .6; text-decoration: none; }
+    .anchor-link:hover { opacity: 1; }
+    #toc { padding-left: 4px; }
+    #toc-list { margin: 0; padding-left: 16px; }
+    #toc-list li { list-style: none; margin: 4px 0; }
+    #toc-list li.toc-h2 { margin-left: 12px; }
+    #toc-list li.toc-h3 { margin-left: 24px; }
+    #toc-list li.toc-h4 { margin-left: 36px; }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -20,6 +30,11 @@
     </header>
 
     <section class="section card">
+      <h3>Sisällysluettelo</h3>
+      <nav id="toc"><ul id="toc-list"></ul></nav>
+    </section>
+
+    <section class="section card">
       <article id="content" class="prose">
         <noscript>Ota JavaScript käyttöön nähdäksesi markdown-sisällön.</noscript>
       </article>
@@ -33,14 +48,49 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     (async function() {
+      const contentEl = document.getElementById('content');
+      const tocList = document.getElementById('toc-list');
       try {
         const resp = await fetch('https://raw.githubusercontent.com/nokulu/Linxdiary/main/paivakirja.md', { cache: 'no-cache' });
         if (!resp.ok) throw new Error('Ei voitu ladata paivakirja.md');
         const md = await resp.text();
         const html = marked.parse(md, { mangle: false, headerIds: true });
-        document.getElementById('content').innerHTML = html;
+        contentEl.innerHTML = html;
+
+        // Build TOC and add anchor links to headings
+        const headings = contentEl.querySelectorAll('h1, h2, h3, h4');
+        tocList.innerHTML = '';
+        headings.forEach(h => {
+          const level = parseInt(h.tagName.substring(1), 10);
+          let id = h.id;
+          if (!id) {
+            // Fallback slug if marked didn't add one (shouldn't happen with headerIds: true)
+            id = h.textContent.trim().toLowerCase()
+              .replace(/\s+/g, '-')
+              .replace(/[^a-z0-9\-äöå]/gi, '');
+            h.id = id;
+          }
+          const titleText = h.textContent.trim();
+
+          // Append small anchor link icon to heading
+          const anchor = document.createElement('a');
+          anchor.href = '#' + id;
+          anchor.className = 'anchor-link';
+          anchor.setAttribute('aria-label', 'Linkki tähän otsikkoon');
+          anchor.textContent = '¶';
+          h.appendChild(anchor);
+
+          // Add entry to TOC
+          const li = document.createElement('li');
+          li.className = 'toc-h' + level;
+          const a = document.createElement('a');
+          a.href = '#' + id;
+          a.textContent = titleText;
+          li.appendChild(a);
+          tocList.appendChild(li);
+        });
       } catch (e) {
-        document.getElementById('content').innerHTML = '<p>Virhe sisällön latauksessa. <a href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Avaa GitHubissa</a>.</p>';
+        contentEl.innerHTML = '<p>Virhe sisällön latauksessa. <a href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Avaa GitHubissa</a>.</p>';
         console.error(e);
       }
     })();
