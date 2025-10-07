@@ -1,0 +1,76 @@
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  margin: 0;
+  background: #0b1220;
+  color: #e5e7eb;
+  line-height: 1.55;
+}
+
+a { color: #93c5fd; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container {
+  max-width: 980px;
+  margin: 28px auto;
+  padding: 0 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.header h1 { margin: 0; font-size: 1.6rem; }
+.nav a { margin-left: 12px; color: #c7d2fe; }
+
+.hero {
+  margin-top: 22px;
+  background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(99,102,241,0.18));
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 14px;
+  padding: 26px;
+  box-shadow: 0 8px 30px rgba(2,6,23,0.35);
+}
+.hero h2 { margin: 0 0 6px; font-size: 1.9rem; }
+.hero p { margin: 0; color: #cbd5e1; }
+
+dots { margin-top: 18px; }
+.btn {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 700;
+  background: #2563eb;
+  color: white;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.btn:hover { background: #1e40af; text-decoration: none; }
+.btn.secondary { background: transparent; color: #e5e7eb; border-color: rgba(148,163,184,0.3); }
+.btn.secondary:hover { background: rgba(148,163,184,0.1); }
+
+.section { margin-top: 28px; }
+.card {
+  background: rgba(2,6,23,0.6);
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+footer { margin: 24px 0; text-align: center; color: #94a3b8; font-size: 0.95rem; }
+
+/* Prose styles for diary page */
+.prose { color: #e5e7eb; }
+.prose h1, .prose h2, .prose h3 { color: #f8fafc; }
+.prose h1 { font-size: 2rem; margin: 0 0 12px; }
+.prose h2 { font-size: 1.5rem; margin-top: 26px; margin-bottom: 10px; }
+.prose h3 { font-size: 1.2rem; margin-top: 20px; margin-bottom: 8px; }
+.prose p { margin: 10px 0; }
+.prose code { background: rgba(148,163,184,0.15); padding: 2px 6px; border-radius: 6px; }
+.prose pre { background: #0a0f1d; border: 1px solid rgba(148,163,184,0.2); padding: 14px; border-radius: 10px; overflow: auto; }
+.prose pre code { background: transparent; padding: 0; }
+.prose a { color: #93c5fd; }
+
+/* Table and list tweaks */
+.prose ul, .prose ol { padding-left: 22px; }
+.prose blockquote { border-left: 4px solid #334155; margin: 0; padding: 8px 12px; color: #cbd5e1; background: rgba(51,65,85,0.15); border-radius: 6px; }
