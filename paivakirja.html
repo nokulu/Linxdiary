@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Päiväkirja — Linxdiary</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div>
+        <h1>Linxdiary</h1>
+        <p class="subtitle">Oppimispäiväkirja (Linux-perusteet)</p>
+      </div>
+      <nav class="nav">
+        <a class="btn secondary" href="./index.html">Etusivu</a>
+        <a class="btn" href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Näytä GitHubissa</a>
+      </nav>
+    </header>
+
+    <section class="section card">
+      <article id="content" class="prose">
+        <noscript>Ota JavaScript käyttöön nähdäksesi markdown-sisällön.</noscript>
+      </article>
+    </section>
+
+    <footer>
+      <p>© Linxdiary — <a href="https://github.com/nokulu/Linxdiary" target="_blank" rel="noopener">GitHub</a></p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    (async function() {
+      try {
+        const resp = await fetch('https://raw.githubusercontent.com/nokulu/Linxdiary/main/paivakirja.md', { cache: 'no-cache' });
+        if (!resp.ok) throw new Error('Ei voitu ladata paivakirja.md');
+        const md = await resp.text();
+        const html = marked.parse(md, { mangle: false, headerIds: true });
+        document.getElementById('content').innerHTML = html;
+      } catch (e) {
+        document.getElementById('content').innerHTML = '<p>Virhe sisällön latauksessa. <a href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Avaa GitHubissa</a>.</p>';
+        console.error(e);
+      }
+    })();
+  </script>
+</body>
+</html>
