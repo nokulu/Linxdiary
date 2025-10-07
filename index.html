@@ -4,20 +4,40 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Linxdiary — Linux perusteet päiväkirja</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header>
-    <h1>Linxdiary</h1>
-    <p>Linux Course diary — Tervetuloa!</p>
-  </header>
-  <main>
-    <section>
-      <h2>Kirjoituksia</h2>
-      <p>Tähän lisätään päiväkirjamerkintöjä kurssista.</p>
+  <div class="container">
+    <header class="header">
+      <div>
+        <h1>Linxdiary</h1>
+        <p class="subtitle">Linux Course diary — Tervetuloa!</p>
+      </div>
+      <nav class="nav">
+        <a class="btn" href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Päiväkirja</a>
+        <a class="btn secondary" href="https://github.com/nokulu/Linxdiary" target="_blank" rel="noopener">Repo</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h2>Oppimispäiväkirja: Linux-perusteet</h2>
+      <p>Seuraa etenemistäni ja tehtäviäni päivä päivältä. Klikkaa “Päiväkirja” nähdäksesi sisällön.</p>
     </section>
-  </main>
-  <footer>
-    <p>Repo: https://github.com/nokulu/Linxdiary</p>
-  </footer>
+
+    <section class="section">
+      <div class="card">
+        <h3>Mitä sivulta löytyy?</h3>
+        <ul>
+          <li>Päiväkohtaiset tehtävät ja ratkaisut</li>
+          <li>Komennot ja muistiinpanot</li>
+          <li>Linkit ja lähteet</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer>
+      <p>© Linxdiary — <a href="https://github.com/nokulu/Linxdiary" target="_blank" rel="noopener">GitHub</a></p>
+    </footer>
+  </div>
 </body>
 </html>
