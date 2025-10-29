@@ -120,10 +120,8 @@
           }
           // Content lines
           else if (currentTask) {
-            // Stop at next day or task
-            if (!line.match(/^##\s+Päivä/i)) {
-              currentTask.content.push(line);
-            }
+            // Continue collecting content (already stopped at next day/task by the conditions above)
+            currentTask.content.push(line);
           }
         }
         
