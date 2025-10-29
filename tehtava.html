@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tehtävä — Linxdiary</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: #93c5fd;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+    .back-link::before {
+      content: '← ';
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Siirry sisältöön</a>
+  <div class="container">
+    <header class="header">
+      <div>
+        <h1>Linxdiary</h1>
+        <p class="subtitle">Tehtävä</p>
+      </div>
+      <nav class="nav">
+        <a class="btn secondary" href="./index.html">Etusivu</a>
+        <a class="btn" href="./paivakirja.html">Tehtävälista</a>
+      </nav>
+    </header>
+
+    <section class="section card" id="main-content">
+      <a href="./paivakirja.html" class="back-link">Takaisin tehtävälistaan</a>
+      <article id="task-content" class="prose">
+        <noscript>Ota JavaScript käyttöön nähdäksesi tehtävän.</noscript>
+      </article>
+    </section>
+
+    <footer>
+      <p>© Linxdiary</p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    // Shared slug function (must match paivakirja.html)
+    function slug(text) {
+      return text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // strip diacritics
+        .replace(/[^a-z0-9 -]/g, '')      // remove non-alphanumeric except space and dash
+        .trim()
+        .replace(/\s+/g, '-');             // spaces to dash
+    }
+
+    (async function() {
+      const taskContentEl = document.getElementById('task-content');
+      const params = new URLSearchParams(window.location.search);
+      const targetSlug = params.get('slug');
+      
+      if (!targetSlug) {
+        taskContentEl.innerHTML = '<p>Virhe: Tehtävää ei määritelty. Palaa tehtävälistaan.</p>';
+        return;
+      }
+
+      try {
+        const resp = await fetch('./paivakirja.md', { cache: 'no-cache' });
+        if (!resp.ok) throw new Error('Ei voitu ladata päiväkirjaa');
+        const md = await resp.text();
+        
+        // Split by lines to find the task
+        const lines = md.split('\n');
+        let taskStartIndex = -1;
+        let taskEndIndex = -1;
+        let foundTask = false;
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          
+          // Check if this is an H3 heading
+          if (line.startsWith('### ')) {
+            const heading = line.substring(4).trim();
+            const headingSlug = slug(heading);
+            
+            if (headingSlug === targetSlug) {
+              taskStartIndex = i;
+              foundTask = true;
+            } else if (foundTask) {
+              // We found another H3, this marks the end
+              taskEndIndex = i;
+              break;
+            }
+          } else if (foundTask && (line.startsWith('## ') || line.startsWith('# '))) {
+            // We hit a higher level heading, this marks the end
+            taskEndIndex = i;
+            break;
+          }
+        }
+        
+        if (!foundTask) {
+          taskContentEl.innerHTML = '<p>Tehtävää ei löytynyt. Palaa tehtävälistaan.</p>';
+          return;
+        }
+        
+        // Extract the task content
+        const taskLines = taskEndIndex === -1 
+          ? lines.slice(taskStartIndex)
+          : lines.slice(taskStartIndex, taskEndIndex);
+        
+        const taskMd = taskLines.join('\n');
+        const taskHtml = marked.parse(taskMd, { mangle: false, headerIds: false });
+        
+        taskContentEl.innerHTML = taskHtml;
+        
+        // Update page title
+        const firstH3 = taskContentEl.querySelector('h3');
+        if (firstH3) {
+          document.title = firstH3.textContent.trim() + ' — Linxdiary';
+        }
+      } catch (e) {
+        taskContentEl.innerHTML = '<p>Virhe sisällön latauksessa. Tarkista verkkoyhteys ja yritä uudelleen.</p>';
+        console.error(e);
+      }
+    })();
+  </script>
+  <script src="animations.js" defer></script>
+</body>
+</html>
