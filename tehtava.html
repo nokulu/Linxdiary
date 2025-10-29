@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tehtävä — Linxdiary</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .anchor-link { margin-left: 8px; opacity: .6; text-decoration: none; }
+    .anchor-link:hover { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div>
+        <h1>Linxdiary</h1>
+        <p class="subtitle" id="task-subtitle">Tehtävä</p>
+      </div>
+      <nav class="nav">
+        <a class="btn secondary" href="./index.html">Etusivu</a>
+        <a class="btn secondary" href="./paivakirja.html">Tehtäväindeksi</a>
+        <a class="btn" href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Näytä GitHubissa</a>
+      </nav>
+    </header>
+
+    <section class="section card">
+      <div class="breadcrumb">
+        <a href="./index.html">Etusivu</a>
+        <span class="breadcrumb-separator">/</span>
+        <a href="./paivakirja.html">Tehtäväindeksi</a>
+        <span class="breadcrumb-separator">/</span>
+        <span id="breadcrumb-task">Tehtävä</span>
+      </div>
+      <article id="content" class="prose">
+        <noscript>Ota JavaScript käyttöön nähdäksesi tehtävän sisällön.</noscript>
+      </article>
+    </section>
+
+    <section class="section card">
+      <h3>Navigaatio</h3>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a id="prev-link" class="btn secondary" style="display:none;">← Edellinen tehtävä</a>
+        <a id="next-link" class="btn secondary" style="display:none;">Seuraava tehtävä →</a>
+        <a class="btn" href="./paivakirja.html">Takaisin tehtäväindeksiin</a>
+      </div>
+    </section>
+
+    <footer>
+      <p>© Linxdiary — <a href="https://github.com/nokulu/Linxdiary" target="_blank" rel="noopener">GitHub</a></p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    (async function() {
+      const contentEl = document.getElementById('content');
+      const subtitleEl = document.getElementById('task-subtitle');
+      const breadcrumbEl = document.getElementById('breadcrumb-task');
+      const prevLink = document.getElementById('prev-link');
+      const nextLink = document.getElementById('next-link');
+      
+      // Get slug from URL
+      const params = new URLSearchParams(window.location.search);
+      const targetSlug = params.get('slug');
+      
+      if (!targetSlug) {
+        contentEl.innerHTML = '<p>Virhe: Tehtävää ei määritelty. <a href="./paivakirja.html">Palaa tehtäväindeksiin</a>.</p>';
+        return;
+      }
+      
+      function slugify(text) {
+        return text.trim().toLowerCase()
+          .replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/å/g, 'a')
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9\-]/g, '');
+      }
+      
+      try {
+        // Fetch from relative path (works in private repos)
+        const resp = await fetch('./paivakirja.md', { cache: 'no-cache' });
+        if (!resp.ok) throw new Error('Ei voitu ladata paivakirja.md');
+        const md = await resp.text();
+        
+        // Parse the markdown
+        const lines = md.split('\n');
+        let currentDay = null;
+        let currentDayTitle = '';
+        let currentTask = null;
+        let currentTaskTitle = '';
+        const tasks = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          
+          // Day header
+          if (line.match(/^##\s+Päivä\s+\d+/i)) {
+            // Save previous task if exists
+            if (currentTask) {
+              tasks.push(currentTask);
+            }
+            currentDayTitle = line.replace(/^##\s+/, '').trim();
+            currentDay = currentDayTitle;
+            currentTask = null;
+          }
+          // Task header
+          else if (line.match(/^###\s+Tehtävä:/i)) {
+            // Save previous task if exists
+            if (currentTask) {
+              tasks.push(currentTask);
+            }
+            currentTaskTitle = line.replace(/^###\s+Tehtävä:\s*/i, '').trim();
+            const slug = slugify(currentDay + ' ' + currentTaskTitle);
+            currentTask = {
+              day: currentDay,
+              title: currentTaskTitle,
+              slug: slug,
+              content: [line]
+            };
+          }
+          // Content lines
+          else if (currentTask) {
+            // Continue collecting content (already stopped at next day/task by the conditions above)
+            currentTask.content.push(line);
+          }
+        }
+        
+        // Don't forget the last task
+        if (currentTask) {
+          tasks.push(currentTask);
+        }
+        
+        // Find the target task
+        const taskIndex = tasks.findIndex(t => t.slug === targetSlug);
+        if (taskIndex === -1) {
+          contentEl.innerHTML = '<p>Tehtävää ei löytynyt. <a href="./paivakirja.html">Palaa tehtäväindeksiin</a>.</p>';
+          return;
+        }
+        
+        const task = tasks[taskIndex];
+        
+        // Update page title and breadcrumb
+        document.title = `${task.title} — Linxdiary`;
+        subtitleEl.textContent = task.title;
+        breadcrumbEl.textContent = task.title;
+        
+        // Render task content
+        const taskMd = task.content.join('\n');
+        const html = marked.parse(taskMd, { mangle: false, headerIds: true });
+        contentEl.innerHTML = html;
+        
+        // Add anchor links to headings
+        const headings = contentEl.querySelectorAll('h1, h2, h3, h4');
+        headings.forEach(h => {
+          let id = h.id;
+          if (!id) {
+            id = slugify(h.textContent);
+            h.id = id;
+          }
+          const anchor = document.createElement('a');
+          anchor.href = '#' + id;
+          anchor.className = 'anchor-link';
+          anchor.setAttribute('aria-label', 'Linkki tähän otsikkoon');
+          anchor.textContent = '¶';
+          h.appendChild(anchor);
+        });
+        
+        // Setup navigation links
+        if (taskIndex > 0) {
+          const prevTask = tasks[taskIndex - 1];
+          prevLink.href = `./tehtava.html?slug=${encodeURIComponent(prevTask.slug)}`;
+          prevLink.style.display = 'inline-block';
+        }
+        if (taskIndex < tasks.length - 1) {
+          const nextTask = tasks[taskIndex + 1];
+          nextLink.href = `./tehtava.html?slug=${encodeURIComponent(nextTask.slug)}`;
+          nextLink.style.display = 'inline-block';
+        }
+        
+      } catch (e) {
+        contentEl.innerHTML = '<p>Virhe sisällön latauksessa. <a href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Avaa GitHubissa</a>.</p>';
+        console.error(e);
+      }
+    })();
+  </script>
+</body>
+</html>

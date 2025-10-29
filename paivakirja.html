@@ -3,25 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Päiväkirja — Linxdiary</title>
+  <title>Tehtäväindeksi — Linxdiary</title>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    .anchor-link { margin-left: 8px; opacity: .6; text-decoration: none; }
-    .anchor-link:hover { opacity: 1; }
-    #toc { padding-left: 4px; }
-    #toc-list { margin: 0; padding-left: 16px; }
-    #toc-list li { list-style: none; margin: 4px 0; }
-    #toc-list li.toc-h2 { margin-left: 12px; }
-    #toc-list li.toc-h3 { margin-left: 24px; }
-    #toc-list li.toc-h4 { margin-left: 36px; }
-  </style>
 </head>
 <body>
   <div class="container">
     <header class="header">
       <div>
         <h1>Linxdiary</h1>
-        <p class="subtitle">Oppimispäiväkirja (Linux-perusteet)</p>
+        <p class="subtitle">Tehtäväindeksi</p>
       </div>
       <nav class="nav">
         <a class="btn secondary" href="./index.html">Etusivu</a>
@@ -30,14 +20,15 @@
     </header>
 
     <section class="section card">
-      <h3>Sisällysluettelo</h3>
-      <nav id="toc"><ul id="toc-list"></ul></nav>
-    </section>
-
-    <section class="section card">
-      <article id="content" class="prose">
-        <noscript>Ota JavaScript käyttöön nähdäksesi markdown-sisällön.</noscript>
-      </article>
+      <div class="breadcrumb">
+        <a href="./index.html">Etusivu</a>
+        <span class="breadcrumb-separator">/</span>
+        <span>Tehtäväindeksi</span>
+      </div>
+      <h2>Kaikki tehtävät päivittäin</h2>
+      <div id="task-index">
+        <noscript>Ota JavaScript käyttöön nähdäksesi tehtävät.</noscript>
+      </div>
     </section>
 
     <footer>
@@ -48,49 +39,71 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     (async function() {
-      const contentEl = document.getElementById('content');
-      const tocList = document.getElementById('toc-list');
+      const indexEl = document.getElementById('task-index');
+      
+      function slugify(text) {
+        return text.trim().toLowerCase()
+          .replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/å/g, 'a')
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9\-]/g, '');
+      }
+      
       try {
-        const resp = await fetch('https://raw.githubusercontent.com/nokulu/Linxdiary/main/paivakirja.md', { cache: 'no-cache' });
+        // Fetch from relative path (works in private repos)
+        const resp = await fetch('./paivakirja.md', { cache: 'no-cache' });
         if (!resp.ok) throw new Error('Ei voitu ladata paivakirja.md');
         const md = await resp.text();
-        const html = marked.parse(md, { mangle: false, headerIds: true });
-        contentEl.innerHTML = html;
-
-        // Build TOC and add anchor links to headings
-        const headings = contentEl.querySelectorAll('h1, h2, h3, h4');
-        tocList.innerHTML = '';
-        headings.forEach(h => {
-          const level = parseInt(h.tagName.substring(1), 10);
-          let id = h.id;
-          if (!id) {
-            // Fallback slug if marked didn't add one (shouldn't happen with headerIds: true)
-            id = h.textContent.trim().toLowerCase()
-              .replace(/\s+/g, '-')
-              .replace(/[^a-z0-9\-äöå]/gi, '');
-            h.id = id;
+        
+        // Parse the markdown to extract days and tasks
+        const lines = md.split('\n');
+        let currentDay = null;
+        let currentDayTitle = '';
+        const days = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          
+          // Day header (## Päivä X — ...)
+          if (line.match(/^##\s+Päivä\s+\d+/i)) {
+            if (currentDay) {
+              days.push(currentDay);
+            }
+            currentDayTitle = line.replace(/^##\s+/, '').trim();
+            currentDay = { title: currentDayTitle, tasks: [] };
           }
-          const titleText = h.textContent.trim();
-
-          // Append small anchor link icon to heading
-          const anchor = document.createElement('a');
-          anchor.href = '#' + id;
-          anchor.className = 'anchor-link';
-          anchor.setAttribute('aria-label', 'Linkki tähän otsikkoon');
-          anchor.textContent = '¶';
-          h.appendChild(anchor);
-
-          // Add entry to TOC
-          const li = document.createElement('li');
-          li.className = 'toc-h' + level;
-          const a = document.createElement('a');
-          a.href = '#' + id;
-          a.textContent = titleText;
-          li.appendChild(a);
-          tocList.appendChild(li);
+          // Task header (### Tehtävä: ...)
+          else if (line.match(/^###\s+Tehtävä:/i)) {
+            const taskTitle = line.replace(/^###\s+Tehtävä:\s*/i, '').trim();
+            const slug = slugify(currentDayTitle + ' ' + taskTitle);
+            if (currentDay) {
+              currentDay.tasks.push({ title: taskTitle, slug: slug });
+            }
+          }
+        }
+        
+        // Don't forget the last day
+        if (currentDay) {
+          days.push(currentDay);
+        }
+        
+        // Build the HTML
+        let html = '';
+        days.forEach(day => {
+          html += `<div class="day-group">`;
+          html += `<h3 class="day-title">${day.title}</h3>`;
+          html += `<ul class="task-list">`;
+          day.tasks.forEach(task => {
+            html += `<li><a class="task-link" href="./tehtava.html?slug=${encodeURIComponent(task.slug)}">`;
+            html += `<strong>Tehtävä:</strong> ${task.title}`;
+            html += `</a></li>`;
+          });
+          html += `</ul></div>`;
         });
+        
+        indexEl.innerHTML = html;
+        
       } catch (e) {
-        contentEl.innerHTML = '<p>Virhe sisällön latauksessa. <a href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Avaa GitHubissa</a>.</p>';
+        indexEl.innerHTML = '<p>Virhe sisällön latauksessa. <a href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Avaa GitHubissa</a>.</p>';
         console.error(e);
       }
     })();
