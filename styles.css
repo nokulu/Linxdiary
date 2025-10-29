@@ -229,6 +229,7 @@ dots { margin-top: 18px; }
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
+  -webkit-mask-composite: exclude;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
