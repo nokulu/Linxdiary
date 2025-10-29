@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tehtävä — Linxdiary</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .breadcrumb {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+    .breadcrumb a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+    .task-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(148,163,184,0.2);
+    }
+    .task-nav a {
+      color: #93c5fd;
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(148,163,184,0.2);
+      background: rgba(2,6,23,0.4);
+    }
+    .task-nav a:hover {
+      background: rgba(148,163,184,0.1);
+      text-decoration: none;
+    }
+    .task-nav a.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div>
+        <h1>Linxdiary</h1>
+        <p class="subtitle">Oppimispäiväkirja (Linux-perusteet)</p>
+      </div>
+      <nav class="nav">
+        <a class="btn secondary" href="./index.html">Etusivu</a>
+        <a class="btn" href="./paivakirja.html">Tehtävät</a>
+      </nav>
+    </header>
+
+    <section class="section card">
+      <div class="breadcrumb">
+        <a href="./index.html">Etusivu</a> / 
+        <a href="./paivakirja.html">Tehtävät</a> / 
+        <span id="breadcrumb-day"></span> / 
+        <span id="breadcrumb-task"></span>
+      </div>
+      
+      <article id="content" class="prose">
+        <noscript>Ota JavaScript käyttöön nähdäksesi markdown-sisällön.</noscript>
+      </article>
+
+      <div class="task-nav">
+        <a id="prev-task" href="#" class="disabled">← Edellinen tehtävä</a>
+        <a id="next-task" href="#" class="disabled">Seuraava tehtävä →</a>
+      </div>
+    </section>
+
+    <footer>
+      <p>© Linxdiary — <a href="https://github.com/nokulu/Linxdiary" target="_blank" rel="noopener">GitHub</a></p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    (async function() {
+      const contentEl = document.getElementById('content');
+      const breadcrumbDay = document.getElementById('breadcrumb-day');
+      const breadcrumbTask = document.getElementById('breadcrumb-task');
+      const prevTaskLink = document.getElementById('prev-task');
+      const nextTaskLink = document.getElementById('next-task');
+      
+      // Get slug from URL parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const slug = urlParams.get('slug');
+      
+      if (!slug) {
+        contentEl.innerHTML = '<p>Virhe: Tehtävän tunniste puuttuu. <a href="./paivakirja.html">Palaa tehtävälistaan</a>.</p>';
+        return;
+      }
+
+      try {
+        // Fetch markdown from relative URL (private-repo friendly)
+        const resp = await fetch('./paivakirja.md', { cache: 'no-cache' });
+        if (!resp.ok) throw new Error('Ei voitu ladata paivakirja.md');
+        const md = await resp.text();
+        
+        // Parse structure: days and tasks
+        const structure = parseMarkdownStructure(md);
+        
+        // Find the requested task
+        const taskData = findTaskBySlug(structure, slug);
+        if (!taskData) {
+          contentEl.innerHTML = '<p>Tehtävää ei löytynyt. <a href="./paivakirja.html">Palaa tehtävälistaan</a>.</p>';
+          return;
+        }
+
+        // Render task content
+        const html = marked.parse(taskData.content, { mangle: false, headerIds: true });
+        contentEl.innerHTML = html;
+        
+        // Update breadcrumb
+        breadcrumbDay.textContent = taskData.dayTitle;
+        breadcrumbTask.textContent = taskData.taskTitle;
+        
+        // Update navigation links
+        const allTasks = getAllTasksSorted(structure);
+        const currentIndex = allTasks.findIndex(t => t.slug === slug);
+        
+        if (currentIndex > 0) {
+          const prev = allTasks[currentIndex - 1];
+          prevTaskLink.href = `./tehtava.html?slug=${prev.slug}`;
+          prevTaskLink.classList.remove('disabled');
+        }
+        
+        if (currentIndex < allTasks.length - 1) {
+          const next = allTasks[currentIndex + 1];
+          nextTaskLink.href = `./tehtava.html?slug=${next.slug}`;
+          nextTaskLink.classList.remove('disabled');
+        }
+        
+      } catch (e) {
+        contentEl.innerHTML = '<p>Virhe sisällön latauksessa. <a href="./paivakirja.html">Palaa tehtävälistaan</a>.</p>';
+        console.error(e);
+      }
+    })();
+
+    function parseMarkdownStructure(md) {
+      const lines = md.split('\n');
+      const structure = [];
+      let currentDay = null;
+      let currentTask = null;
+      let contentLines = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Day header (## Päivä X)
+        if (line.startsWith('## Päivä ')) {
+          // Save previous task if exists
+          if (currentTask) {
+            currentTask.content = contentLines.join('\n').trim();
+            currentDay.tasks.push(currentTask);
+          }
+          
+          // Start new day
+          const dayTitle = line.replace(/^##\s+/, '').trim();
+          currentDay = {
+            title: dayTitle,
+            slug: slugify(dayTitle),
+            tasks: []
+          };
+          structure.push(currentDay);
+          currentTask = null;
+          contentLines = [];
+        }
+        // Task header (### Tehtävä:)
+        else if (line.startsWith('### Tehtävä:')) {
+          // Save previous task if exists
+          if (currentTask) {
+            currentTask.content = contentLines.join('\n').trim();
+            currentDay.tasks.push(currentTask);
+          }
+          
+          // Start new task
+          const taskTitle = line.replace(/^###\s+Tehtävä:\s*/, '').trim();
+          currentTask = {
+            title: taskTitle,
+            slug: slugify(taskTitle),
+            daySlug: currentDay.slug
+          };
+          contentLines = [line]; // Include the task header
+        }
+        // Other section headers or regular content
+        else if (currentTask) {
+          contentLines.push(line);
+        }
+      }
+
+      // Save last task
+      if (currentTask && currentDay) {
+        currentTask.content = contentLines.join('\n').trim();
+        currentDay.tasks.push(currentTask);
+      }
+
+      return structure;
+    }
+
+    function findTaskBySlug(structure, slug) {
+      for (const day of structure) {
+        for (const task of day.tasks) {
+          if (task.slug === slug) {
+            return {
+              dayTitle: day.title,
+              taskTitle: task.title,
+              content: task.content,
+              slug: task.slug
+            };
+          }
+        }
+      }
+      return null;
+    }
+
+    function getAllTasksSorted(structure) {
+      const tasks = [];
+      for (const day of structure) {
+        for (const task of day.tasks) {
+          tasks.push({
+            slug: task.slug,
+            dayTitle: day.title,
+            taskTitle: task.title
+          });
+        }
+      }
+      return tasks;
+    }
+
+    function slugify(text) {
+      return text.toLowerCase()
+        .replace(/[äå]/g, 'a')
+        .replace(/ö/g, 'o')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+  </script>
+</body>
+</html>
