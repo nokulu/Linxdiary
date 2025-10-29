@@ -3,17 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Päiväkirja — Linxdiary</title>
+  <title>Tehtävälista — Linxdiary</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-    .anchor-link { margin-left: 8px; opacity: .6; text-decoration: none; }
-    .anchor-link:hover { opacity: 1; }
-    #toc { padding-left: 4px; }
-    #toc-list { margin: 0; padding-left: 16px; }
-    #toc-list li { list-style: none; margin: 4px 0; }
-    #toc-list li.toc-h2 { margin-left: 12px; }
-    #toc-list li.toc-h3 { margin-left: 24px; }
-    #toc-list li.toc-h4 { margin-left: 36px; }
+    .day-section { margin-bottom: 32px; }
+    .day-section h2 { 
+      margin: 0 0 16px; 
+      font-size: 1.6rem; 
+      color: #c7d2fe;
+      border-bottom: 2px solid rgba(99,102,241,0.3);
+      padding-bottom: 8px;
+    }
+    .task-list { list-style: none; padding: 0; margin: 0; }
+    .task-item { 
+      margin: 8px 0; 
+      padding: 12px 16px;
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(148,163,184,0.15);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    .task-item:hover { 
+      background: rgba(99,102,241,0.15);
+      border-color: rgba(148,163,184,0.3);
+      transform: translateX(4px);
+    }
+    .task-item a {
+      color: #e0e7ff;
+      text-decoration: none;
+      font-weight: 500;
+      display: block;
+    }
+    .task-item a:hover { color: #c7d2fe; }
   </style>
 </head>
 <body>
@@ -21,79 +42,88 @@
     <header class="header">
       <div>
         <h1>Linxdiary</h1>
-        <p class="subtitle">Oppimispäiväkirja (Linux-perusteet)</p>
+        <p class="subtitle">Tehtävälista (Linux-perusteet)</p>
       </div>
       <nav class="nav">
         <a class="btn secondary" href="./index.html">Etusivu</a>
-        <a class="btn" href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Näytä GitHubissa</a>
       </nav>
     </header>
 
     <section class="section card">
-      <h3>Sisällysluettelo</h3>
-      <nav id="toc"><ul id="toc-list"></ul></nav>
-    </section>
-
-    <section class="section card">
-      <article id="content" class="prose">
-        <noscript>Ota JavaScript käyttöön nähdäksesi markdown-sisällön.</noscript>
-      </article>
+      <div id="task-list">
+        <noscript>Ota JavaScript käyttöön nähdäksesi tehtävälistan.</noscript>
+      </div>
     </section>
 
     <footer>
-      <p>© Linxdiary — <a href="https://github.com/nokulu/Linxdiary" target="_blank" rel="noopener">GitHub</a></p>
+      <p>© Linxdiary</p>
     </footer>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
+    // Shared slug function
+    function slug(text) {
+      return text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // strip diacritics
+        .replace(/[^a-z0-9 -]/g, '')      // remove non-alphanumeric except space and dash
+        .trim()
+        .replace(/\s+/g, '-');             // spaces to dash
+    }
+
     (async function() {
-      const contentEl = document.getElementById('content');
-      const tocList = document.getElementById('toc-list');
+      const taskListEl = document.getElementById('task-list');
       try {
-        const resp = await fetch('https://raw.githubusercontent.com/nokulu/Linxdiary/main/paivakirja.md', { cache: 'no-cache' });
-        if (!resp.ok) throw new Error('Ei voitu ladata paivakirja.md');
+        const resp = await fetch('./paivakirja.md', { cache: 'no-cache' });
+        if (!resp.ok) throw new Error('Ei voitu ladata päiväkirjaa');
         const md = await resp.text();
-        const html = marked.parse(md, { mangle: false, headerIds: true });
-        contentEl.innerHTML = html;
-
-        // Build TOC and add anchor links to headings
-        const headings = contentEl.querySelectorAll('h1, h2, h3, h4');
-        tocList.innerHTML = '';
-        headings.forEach(h => {
-          const level = parseInt(h.tagName.substring(1), 10);
-          let id = h.id;
-          if (!id) {
-            // Fallback slug if marked didn't add one (shouldn't happen with headerIds: true)
-            id = h.textContent.trim().toLowerCase()
-              .replace(/\s+/g, '-')
-              .replace(/[^a-z0-9\-äöå]/gi, '');
-            h.id = id;
+        const html = marked.parse(md, { mangle: false, headerIds: false });
+        
+        // Parse the HTML to extract days and tasks
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        
+        const days = [];
+        let currentDay = null;
+        
+        Array.from(tempDiv.children).forEach(el => {
+          if (el.tagName === 'H2') {
+            if (currentDay) days.push(currentDay);
+            currentDay = { title: el.textContent.trim(), tasks: [] };
+          } else if (el.tagName === 'H3' && currentDay) {
+            const taskTitle = el.textContent.trim();
+            const taskSlug = slug(taskTitle);
+            currentDay.tasks.push({ title: taskTitle, slug: taskSlug });
           }
-          const titleText = h.textContent.trim();
-
-          // Append small anchor link icon to heading
-          const anchor = document.createElement('a');
-          anchor.href = '#' + id;
-          anchor.className = 'anchor-link';
-          anchor.setAttribute('aria-label', 'Linkki tähän otsikkoon');
-          anchor.textContent = '¶';
-          h.appendChild(anchor);
-
-          // Add entry to TOC
-          const li = document.createElement('li');
-          li.className = 'toc-h' + level;
-          const a = document.createElement('a');
-          a.href = '#' + id;
-          a.textContent = titleText;
-          li.appendChild(a);
-          tocList.appendChild(li);
         });
+        if (currentDay) days.push(currentDay);
+        
+        // Render the task list
+        let output = '';
+        days.forEach(day => {
+          if (day.tasks.length > 0) {
+            output += `<div class="day-section">`;
+            output += `<h2>${day.title}</h2>`;
+            output += `<ul class="task-list">`;
+            day.tasks.forEach(task => {
+              output += `<li class="task-item">`;
+              output += `<a href="./tehtava.html?slug=${encodeURIComponent(task.slug)}">${task.title}</a>`;
+              output += `</li>`;
+            });
+            output += `</ul>`;
+            output += `</div>`;
+          }
+        });
+        
+        taskListEl.innerHTML = output || '<p>Ei tehtäviä löytynyt.</p>';
       } catch (e) {
-        contentEl.innerHTML = '<p>Virhe sisällön latauksessa. <a href="https://github.com/nokulu/Linxdiary/blob/main/paivakirja.md" target="_blank" rel="noopener">Avaa GitHubissa</a>.</p>';
+        taskListEl.innerHTML = '<p>Virhe sisällön latauksessa. Tarkista verkkoyhteys ja yritä uudelleen.</p>';
         console.error(e);
       }
     })();
   </script>
+  <script src="animations.js" defer></script>
 </body>
 </html>
